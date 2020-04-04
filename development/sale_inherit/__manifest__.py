@@ -12,6 +12,7 @@ This module adds a Twitter scroller building block to the website builder, so th
     'depends': ['sale'],
     'data': [
         'views/sale_inherit_views.xml',
+        'views/sale_quotation_confirmation_setting_views.xml',
         'views/sale_quotation_confirmation_views.xml',
         'report/sale_inherit_templates.xml'
     ],

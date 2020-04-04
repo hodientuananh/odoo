@@ -1,20 +1,31 @@
 from odoo import models, fields, api
 
 
-class SaleQuotationConfirmation(models.TransientModel):
-    _inherit = 'res.config.settings'
-    quotation_approval_amount = fields.Integer("Amount Approval", default_model="res.config.settings")
+class SaleModel(models.Model):
+    _inherit = 'sale.order'
+    is_request_to_approval = fields.Boolean(string='Confirm Quotation', readonly=True)
+    is_request_to_approval_trig = fields.Boolean(string='Confirm Quotation Trigger', compute="_is_request_to_approval", readonly=True)
 
-    @api.model
-    def get_values(self):
-        res = super(SaleQuotationConfirmation, self).get_values()
-        param = self.env['ir.config_parameter'].sudo()
-        res.update(
-            quotation_approval_amount = int(param.get_param('sale_inherit.quotation_approval_amount', default=0))
-        )
-        return res
+    def _is_request_to_approval(self):
+        for order in self:
+            quotation_confirmation_setting = int(
+                (self.env['ir.config_parameter'].get_param('sale_inherit.quotation_approval_amount')))
+            total_amount = self._amount_all()
+            order.is_request_to_approval_trig = total_amount > quotation_confirmation_setting
 
-    def set_values(self):
-        super(SaleQuotationConfirmation, self).set_values()
-        param = self.env['ir.config_parameter'].sudo()
-        param.set_param('sale_inherit.quotation_approval_amount', self.quotation_approval_amount)
+    def action_request_to_approval(self):
+        for order in self:
+            quotation_confirmation_setting = int(
+                (self.env['ir.config_parameter'].get_param('sale_inherit.quotation_approval_amount')))
+            order.is_request_to_approval = True
+        self.write({
+            'state': 'sale'
+        })
+
+    def _amount_all(self):
+        for order in self:
+            amount_untaxed = amount_tax = 0.0
+            for line in order.order_line:
+                amount_untaxed += line.price_subtotal
+                amount_tax += line.price_tax
+            return amount_untaxed + amount_tax
